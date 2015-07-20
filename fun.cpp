@@ -13,7 +13,7 @@ class Field {
 public:
 	int x;
 	int y;
-	int redValue;
+	int colorValue;
 	Mat frame_roi;
 };
 
@@ -33,19 +33,23 @@ int getRedHist(Mat src, Mat img, int x, int y){
   float range[] = { 0, 256 } ;
   const float* histRange = { range };
 
-  Mat r_hist;
+  Mat g_hist, b_hist, r_hist;
 
+	calcHist( &bgr_planes[0], 1, 0, Mat(), b_hist, 1, &histSize, &histRange, 1, 0 );
+	calcHist( &bgr_planes[1], 1, 0, Mat(), g_hist, 1, &histSize, &histRange, 1, 0 );
 	calcHist( &bgr_planes[2], 1, 0, Mat(), r_hist, 1, &histSize, &histRange, 1, 0 );
 
-	int redValue=0;
+	int colorValue=0;
   for (int i=0; i<256; ++i){
-    redValue += r_hist.at<float>(i)*i;
+    colorValue += r_hist.at<float>(i)*i;
+    colorValue += b_hist.at<float>(i)*i;
+    colorValue += g_hist.at<float>(i)*i;
   }
   //cout<<redValue<<endl; 
-  string s=NumberToString(redValue);
+  string s=NumberToString(colorValue);
   ++y;
-  putText( img, s, Point(320+80*x, 40+80*y), 1, 1, Scalar(0, 0, 255), 1,1);
-  return redValue;
+  //putText( img, s, Point(320+80*x, 40+80*y), 1, 1, Scalar(0, 0, 255), 1,1);
+  return colorValue;
 }
 
 int main() {
@@ -58,8 +62,8 @@ int main() {
 	Mat img, frame, hist;
 	
 	Field fields[8][8];
-	Mat hists[8][8];
-	
+	int tempx = 0;
+	int tempy = 0;
 	while(1){
 		cap >> frame; // get a new frame from camera
 
@@ -68,10 +72,19 @@ int main() {
 			for (int j=0; j<8; ++j){
 				Mat frame_roi (frame, Rect(320+80*i, 40+80*j, 80, 80));
 				fields[i][j].frame_roi = frame_roi;
-				fields[i][j].redValue = getRedHist(frame_roi, img, i, j);
+				fields[i][j].colorValue = getRedHist(frame_roi, img, i, j);
 			}
 		}
 		
+		for (int i=0; i<8; ++i){
+			for (int j=0; j<8; ++j){
+				if (fields[i][j].colorValue > fields[tempx][tempy].colorValue){
+					tempx = i;
+					tempy = j;
+				}
+			}
+		}
+		circle( img,Point(360+80*tempx, 80+80*tempy),15,Scalar(0, 0, 255),15,1 );
 		imshow("img", img);
 		
 		if(waitKey(30) >= 0)
